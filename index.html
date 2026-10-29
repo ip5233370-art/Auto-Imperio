@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="theme-color" content="#101820">
+  <title>Auto Imperio</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">TU NEGOCIO, TUS REGLAS</p>
+        <h1>🚗 Auto Imperio</h1>
+      </div>
+      <button id="resetBtn" class="icon-btn" title="Reiniciar demo" aria-label="Reiniciar demo">↻</button>
+    </header>
+
+    <section class="balance-card">
+      <div>
+        <span class="muted">Dinero disponible</span>
+        <div class="balance"><span id="money">1.000</span> <small>monedas</small></div>
+      </div>
+      <div class="coin">🪙</div>
+    </section>
+
+    <section class="stats">
+      <div class="stat"><span class="stat-icon">🚘</span><span class="stat-label">En el garaje</span><strong id="carCount">0</strong></div>
+      <div class="stat"><span class="stat-icon">📈</span><span class="stat-label">Ganancia total</span><strong id="profit">0</strong></div>
+      <div class="stat"><span class="stat-icon">🔧</span><span class="stat-label">Reparaciones</span><strong id="repairs">0</strong></div>
+    </section>
+
+    <nav class="tabs" aria-label="Secciones">
+      <button class="tab active" data-tab="market">Mercado</button>
+      <button class="tab" data-tab="garage">Mi garaje</button>
+      <button class="tab" data-tab="guide">Cómo jugar</button>
+    </nav>
+
+    <main>
+      <section id="market" class="panel active">
+        <div class="section-heading">
+          <div><p class="eyebrow">ENCUENTRA UNA OPORTUNIDAD</p><h2>Autos disponibles</h2></div>
+        </div>
+        <p class="subtext">Compra barato, repara lo necesario y vende para conseguir beneficios.</p>
+        <div id="marketList" class="car-list"></div>
+      </section>
+
+      <section id="garage" class="panel">
+        <div class="section-heading"><div><p class="eyebrow">TU COLECCIÓN</p><h2>Mi garaje</h2></div></div>
+        <p class="subtext">Los autos que compres aparecerán aquí. Las cifras son de una demostración local.</p>
+        <div id="garageList" class="car-list"></div>
+      </section>
+
+      <section id="guide" class="panel">
+        <p class="eyebrow">TRES PASOS PARA CRECER</p>
+        <h2>Cómo jugar</h2>
+        <div class="guide-step"><span>1</span><div><strong>Compra</strong><p>Elige un auto que puedas pagar. Cada vehículo tiene un precio y un estado diferentes.</p></div></div>
+        <div class="guide-step"><span>2</span><div><strong>Repara</strong><p>Si está dañado, paga el coste de reparación para aumentar su valor de venta.</p></div></div>
+        <div class="guide-step"><span>3</span><div><strong>Vende</strong><p>Vende el vehículo y compara el dinero recibido con tus costes para ver si ganaste.</p></div></div>
+        <div class="notice"><strong>Versión inicial</strong><p>Este prototipo guarda el progreso en este navegador. Todavía no tiene cuentas en línea, anuncios reales ni compras. No uses dinero real en esta demo.</p></div>
+      </section>
+    </main>
+
+    <footer><span>Prototipo 0.1</span><span>Hecho para Telegram Mini Apps</span></footer>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="game.js"></script>
+</body>
+</html>
