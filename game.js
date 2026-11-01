@@ -3,86 +3,32 @@
 "use strict";
 
 const tg = window.Telegram?.WebApp;
-
 if (tg) {
   tg.ready();
   tg.expand();
 }
 
 const CARS = [
-  {
-    id: "city",
-    name: "Compacto urbano",
-    emoji: "🚙",
-    condition: 88,
-    buy: 280,
-    repair: 55,
-    resale: 440,
-    tag: "Buena oportunidad"
-  },
-  {
-    id: "classic",
-    name: "Clásico de segunda",
-    emoji: "🚗",
-    condition: 52,
-    buy: 390,
-    repair: 125,
-    resale: 650,
-    tag: "Necesita trabajo"
-  },
-  {
-    id: "sport",
-    name: "Deportivo usado",
-    emoji: "🏎️",
-    condition: 66,
-    buy: 620,
-    repair: 170,
-    resale: 960,
-    tag: "Alto potencial"
-  },
-  {
-    id: "suv",
-    name: "Todoterreno viejo",
-    emoji: "🚐",
-    condition: 43,
-    buy: 500,
-    repair: 190,
-    resale: 850,
-    tag: "Para expertos"
-  },
-  {
-    id: "family",
-    name: "Familiar económico",
-    emoji: "🚘",
-    condition: 92,
-    buy: 450,
-    repair: 40,
-    resale: 610,
-    tag: "Casi listo"
-  },
-  {
-    id: "pickup",
-    name: "Pickup de trabajo",
-    emoji: "🛻",
-    condition: 59,
-    buy: 560,
-    repair: 145,
-    resale: 820,
-    tag: "Buen negocio"
-  }
+  {id:"city",name:"Compacto urbano",emoji:"🚙",condition:88,buy:280,repair:55,resale:440,tag:"Buena oportunidad"},
+  {id:"classic",name:"Clásico de segunda",emoji:"🚗",condition:52,buy:390,repair:125,resale:650,tag:"Necesita trabajo"},
+  {id:"sport",name:"Deportivo usado",emoji:"🏎️",condition:66,buy:620,repair:170,resale:960,tag:"Alto potencial"},
+  {id:"suv",name:"Todoterreno viejo",emoji:"🚐",condition:43,buy:500,repair:190,resale:850,tag:"Para expertos"},
+  {id:"family",name:"Familiar económico",emoji:"🚘",condition:92,buy:450,repair:40,resale:610,tag:"Casi listo"},
+  {id:"pickup",name:"Pickup de trabajo",emoji:"🛻",condition:59,buy:560,repair:145,resale:820,tag:"Buen negocio"}
 ];
 
 const KEY = "autoImperioSaveV2";
 
 const fresh = () => ({
-  money: 1000,
-  garage: [],
-  profit: 0,
-  repairs: 0,
-  nextId: 1,
-  toolLevel: 0,
-  shopLevel: 0,
-  businessName: ""
+  money:1000,
+  garage:[],
+  profit:0,
+  repairs:0,
+  nextId:1,
+  toolLevel:0,
+  shopLevel:0,
+  businessName:"",
+  marketOffers:[]
 });
 
 let state = load();
@@ -96,10 +42,7 @@ function load() {
       typeof saved.money === "number" &&
       Array.isArray(saved.garage)
     ) {
-      return {
-        ...fresh(),
-        ...saved
-      };
+      return {...fresh(), ...saved};
     }
   } catch (error) {}
 
@@ -143,7 +86,44 @@ function capacity() {
   return 2 + state.shopLevel * 2;
 }
 
+/* Crear precios variables para el mercado */
+function makeOffers() {
+  state.marketOffers = CARS.map(car => ({
+    id:car.id,
+    offerPrice:Math.max(
+      1,
+      Math.round(car.buy * (0.88 + Math.random() * 0.25))
+    ),
+    offerResale:Math.max(
+      1,
+      Math.round(car.resale * (0.94 + Math.random() * 0.13))
+    )
+  }));
+
+  save();
+}
+
+function getOffer(car) {
+  return state.marketOffers.find(
+    offer => offer.id === car.id
+  );
+}
+
+function ensureOffers() {
+  if (
+    !Array.isArray(state.marketOffers) ||
+    state.marketOffers.length !== CARS.length ||
+    CARS.some(car =>
+      !state.marketOffers.some(offer => offer.id === car.id)
+    )
+  ) {
+    makeOffers();
+  }
+}
+
 function render() {
+  ensureOffers();
+
   $("money").textContent = fmt(state.money);
 
   $("carCount").textContent =
@@ -164,49 +144,94 @@ function render() {
       : "Tu negocio empieza con 1.000 monedas.";
 }
 
+/* Mercado con precios variables */
 function renderMarket() {
-  $("marketList").innerHTML = CARS.map(car => `
-    <article class="car-card">
-      <div class="car-art">${car.emoji}</div>
+  const host = $("marketList");
 
-      <div class="car-info">
-        <div class="car-title">
-          <h3>${car.name}</h3>
-          <span class="badge">
-            ${car.condition}% · ${car.tag}
-          </span>
+  host.innerHTML = `
+    <div class="notice" style="margin:0 0 10px;grid-column:1/-1">
+      <strong>📊 Mercado variable</strong>
+      <p>
+        Los precios cambian cuando renuevas las ofertas.
+        Compara el costo de compra y reparación con
+        el valor estimado de venta.
+      </p>
+      <button class="btn secondary" id="refreshMarket"
+        style="margin-top:9px">
+        🔄 Renovar mercado · 25 monedas
+      </button>
+    </div>
+  ` + CARS.map(car => {
+    const offer = getOffer(car);
+    const cost = repairCost(car);
+
+    const estimatedGain =
+      offer.offerResale - offer.offerPrice - cost;
+
+    return `
+      <article class="car-card">
+        <div class="car-art">${car.emoji}</div>
+
+        <div class="car-info">
+          <div class="car-title">
+            <h3>${car.name}</h3>
+            <span class="badge">
+              ${car.condition}% · ${car.tag}
+            </span>
+          </div>
+
+          <div class="car-meta">
+            <span>🔧 Reparar: ${fmt(cost)}</span>
+            <span>💵 Venta estimada: ${fmt(offer.offerResale)}</span>
+          </div>
+
+          <div class="price-row">
+            <span class="price">
+              ${fmt(offer.offerPrice)} 🪙
+            </span>
+
+            <button class="btn"
+              data-buy="${car.id}"
+              ${state.money < offer.offerPrice ||
+                state.garage.length >= capacity()
+                ? "disabled"
+                : ""}>
+              Comprar
+            </button>
+          </div>
+
+          <div class="car-meta">
+            Ganancia estimada reparándolo:
+            ${estimatedGain >= 0 ? "+" : ""}${fmt(estimatedGain)}
+            monedas
+          </div>
         </div>
+      </article>
+    `;
+  }).join("");
 
-        <div class="car-meta">
-          <span>🔧 Reparar: ${fmt(repairCost(car))}</span>
-          <span>💵 Venta: ${fmt(car.resale)}</span>
-        </div>
+  $("refreshMarket").onclick = () => {
+    if (state.money < 25) {
+      return toast(
+        "Necesitas 25 monedas para renovar el mercado."
+      );
+    }
 
-        <div class="price-row">
-          <span class="price">${fmt(car.buy)} 🪙</span>
+    state.money -= 25;
 
-          <button
-            class="btn"
-            data-buy="${car.id}"
-            ${state.money < car.buy ||
-              state.garage.length >= capacity()
-              ? "disabled"
-              : ""}
-          >
-            Comprar
-          </button>
-        </div>
-      </div>
-    </article>
-  `).join("");
+    makeOffers();
+    render();
 
-  $("marketList")
-    .querySelectorAll("[data-buy]")
-    .forEach(button => {
-      button.onclick = () => buyCar(button.dataset.buy);
-    });
+    toast("¡El mercado tiene nuevas ofertas!");
+  };
+
+  host.querySelectorAll("[data-buy]").forEach(button => {
+    button.onclick = () =>
+      buyCar(button.dataset.buy);
+  });
 }
 
+/* Garaje */
 function renderGarage() {
   const host = $("garageList");
 
@@ -255,14 +280,11 @@ function renderGarage() {
             ${
               car.repaired
                 ? `<span class="price">
-                    Ganancia: ${gain >= 0 ? "+" : ""}${fmt(gain)}
-                    🪙
+                    Ganancia: ${gain >= 0 ? "+" : ""}${fmt(gain)} 🪙
                    </span>`
-                : `<button
-                    class="btn secondary"
+                : `<button class="btn secondary"
                     data-repair="${car.uid}"
-                    ${state.money < cost ? "disabled" : ""}
-                   >
+                    ${state.money < cost ? "disabled" : ""}>
                     🔧 Reparar ${fmt(cost)}
                    </button>`
             }
@@ -287,6 +309,7 @@ function renderGarage() {
   });
 }
 
+/* Mejoras del taller */
 function renderUpgrades() {
   const toolCost = 500 * (state.toolLevel + 1);
   const shopCost = 700 * (state.shopLevel + 1);
@@ -305,11 +328,8 @@ function renderUpgrades() {
           Ahorro acumulable.
         </p>
 
-        <button
-          class="btn"
-          id="toolUpgrade"
-          ${state.money < toolCost ? "disabled" : ""}
-        >
+        <button class="btn" id="toolUpgrade"
+          ${state.money < toolCost ? "disabled" : ""}>
           Mejorar · ${fmt(toolCost)} 🪙
         </button>
       </div>
@@ -328,11 +348,8 @@ function renderUpgrades() {
           para guardar vehículos.
         </p>
 
-        <button
-          class="btn"
-          id="shopUpgrade"
-          ${state.money < shopCost ? "disabled" : ""}
-        >
+        <button class="btn" id="shopUpgrade"
+          ${state.money < shopCost ? "disabled" : ""}>
           Ampliar · ${fmt(shopCost)} 🪙
         </button>
       </div>
@@ -364,33 +381,41 @@ function renderUpgrades() {
   };
 }
 
+/* Comprar vehículo al precio de la oferta */
 function buyCar(id) {
   const car = CARS.find(item => item.id === id);
+  const offer = car && getOffer(car);
 
   if (
     !car ||
-    state.money < car.buy ||
+    !offer ||
+    state.money < offer.offerPrice ||
     state.garage.length >= capacity()
   ) {
     return toast("No puedes comprar ese auto ahora.");
   }
 
-  state.money -= car.buy;
+  state.money -= offer.offerPrice;
 
   state.garage.push({
     ...car,
-    uid: state.nextId++,
-    repaired: false
+    buy:offer.offerPrice,
+    resale:offer.offerResale,
+    uid:state.nextId++,
+    repaired:false
   });
 
   save();
   render();
 
-  toast("¡Auto comprado!");
+  toast("¡Auto comprado al precio de la oferta!");
 }
 
+/* Reparar vehículo */
 function repairCar(uid) {
-  const car = state.garage.find(item => item.uid === uid);
+  const car = state.garage.find(
+    item => item.uid === uid
+  );
 
   if (!car || car.repaired) return;
 
@@ -410,6 +435,7 @@ function repairCar(uid) {
   toast("¡Auto reparado!");
 }
 
+/* Vender vehículo */
 function sellCar(uid) {
   const index = state.garage.findIndex(
     item => item.uid === uid
@@ -423,7 +449,8 @@ function sellCar(uid) {
     ? repairCost(car)
     : 0;
 
-  const gain = car.resale - car.buy - cost;
+  const gain =
+    car.resale - car.buy - cost;
 
   state.money += car.resale;
   state.profit += gain;
@@ -440,6 +467,7 @@ function sellCar(uid) {
   );
 }
 
+/* Navegación */
 document.querySelectorAll(".tab").forEach(button => {
   button.onclick = () => {
     document.querySelectorAll(".tab").forEach(tab => {
@@ -455,6 +483,7 @@ document.querySelectorAll(".tab").forEach(button => {
   };
 });
 
+/* Nombre del negocio */
 $("saveBusiness").onclick = () => {
   state.businessName =
     $("businessName").value.trim().slice(0, 28);
@@ -465,6 +494,7 @@ $("saveBusiness").onclick = () => {
   toast("Nombre del negocio guardado.");
 };
 
+/* Reiniciar partida */
 $("resetBtn").onclick = () => {
   if (
     confirm(
@@ -473,6 +503,7 @@ $("resetBtn").onclick = () => {
   ) {
     state = fresh();
 
+    makeOffers();
     save();
     render();
 
@@ -480,12 +511,13 @@ $("resetBtn").onclick = () => {
   }
 };
 
+/* Exportar progreso */
 $("exportBtn").onclick = () => {
   const data = JSON.stringify(state, null, 2);
 
   const blob = new Blob(
     [data],
-    { type: "application/json" }
+    {type:"application/json"}
   );
 
   const url = URL.createObjectURL(blob);
@@ -501,6 +533,8 @@ $("exportBtn").onclick = () => {
   toast("Copia de progreso descargada.");
 };
 
+ensureOffers();
+save();
 render();
 
 })();
